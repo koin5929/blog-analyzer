@@ -1,15 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import feedparser
-import requests
-import re
-import json
+from openai import OpenAI
+import re, json, feedparser
 
-# ✅ 최신 OpenAI 라이브러리 사용 방식
-import openai
-
-# 👇 여기에 API 키 직접 입력 또는 환경변수 사용
-client = openai.OpenAI(api_key="curl https://api.openai.com/v1/models \  -H "Authorization: Bearer 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"")
+client = OpenAI(api_key="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")
 
 app = Flask(__name__)
 CORS(app)
