@@ -36,20 +36,37 @@ def analyze():
     blog_title = feed.feed.title if 'title' in feed.feed else blog_id
     description = feed.feed.description if 'description' in feed.feed else "네이버 블로그입니다."
 
+    # GPT에 요청할 프롬프트
     prompt = f"""
-다음 블로그 정보를 바탕으로 품질을 분석해줘:
+다음 블로그 정보를 기반으로 품질을 분석해주세요.
 - 제목: {blog_title}
 - 설명: {description}
 - 포스팅 수: {post_count}
 
-아래 항목을 포함한 JSON 형식으로 응답해줘. 다른 말은 하지 말고 JSON만 출력:
+아래와 같은 JSON 형식으로만 응답하세요. 불필요한 말은 포함하지 마세요:
+
 {{
-  "quality": (콘텐츠 품질 점수, 0~100),
-  "seo": (SEO 최적화 점수, 0~100),
-  "readability": (가독성 점수, 0~100),
-  "expertise": (전문성 점수, 0~100),
-  "engagement": (독자 참여도 점수, 0~100),
-  "score": (종합 점수, 0~100)
+  "overall_score": 0~100 숫자,
+  "content_quality": {{
+    "score": 0~100 숫자,
+    "analysis": "한 줄 설명"
+  }},
+  "seo_optimization": {{
+    "score": 0~100 숫자,
+    "analysis": "한 줄 설명"
+  }},
+  "readability": {{
+    "score": 0~100 숫자,
+    "analysis": "한 줄 설명"
+  }},
+  "expertise": {{
+    "score": 0~100 숫자,
+    "analysis": "한 줄 설명"
+  }},
+  "engagement": {{
+    "score": 0~100 숫자,
+    "analysis": "한 줄 설명"
+  }}
 }}
 """
 
@@ -57,7 +74,7 @@ def analyze():
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "블로그 품질 분석가로서 정확하게 분석하고 JSON으로 응답하세요."},
+                {"role": "system", "content": "너는 블로그 품질 평가자이며, 응답은 반드시 JSON으로만 하세요."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=800
@@ -72,10 +89,19 @@ def analyze():
 
         data = json.loads(match.group(0))
 
-        # 누락된 필드를 기본값 0으로 보완
-        required_keys = ["quality", "seo", "readability", "expertise", "engagement", "score"]
-        for key in required_keys:
-            data.setdefault(key, 0)
+        # 누락된 키 보완 (안전 처리)
+        def ensure_field(section, default_score=0, default_analysis="N/A"):
+            if section not in data:
+                data[section] = {"score": default_score, "analysis": default_analysis}
+            else:
+                data[section].setdefault("score", default_score)
+                data[section].setdefault("analysis", default_analysis)
+
+        for section in ["content_quality", "seo_optimization", "readability", "expertise", "engagement"]:
+            ensure_field(section)
+
+        if "overall_score" not in data:
+            data["overall_score"] = 0
 
         return jsonify({
             "title": blog_title,
