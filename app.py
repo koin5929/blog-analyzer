@@ -1,17 +1,16 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import openai
 import feedparser
 import requests
 import re
 import json
 
-app = Flask(__name__)
-CORS(app)
-
-# ✅ 최신 openai 라이브러리 (1.0 이상)
+# ✅ 최신 OpenAI 라이브러리 방식
 from openai import OpenAI
 client = OpenAI(api_key="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")
+
+app = Flask(__name__)
+CORS(app)
 
 @app.route("/analyze-blog", methods=["POST"])
 def analyze():
@@ -31,7 +30,7 @@ def analyze():
 콘텐츠 품질, SEO, 가독성, 전문성, 독자 참여도를 점수로 평가해줘. JSON으로만 응답."""
 
     try:
-        chat_response = client.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "블로그 품질 분석가로서 정확하게 분석하고 JSON으로 응답하세요."},
@@ -40,9 +39,9 @@ def analyze():
             max_tokens=800
         )
 
-        content = chat_response.choices[0].message.content
+        content = response.choices[0].message.content
         match = re.search(r"\{.*\}", content, re.DOTALL)
-        data = json.loads(match.group(0)) if match else {"error": "Invalid JSON"}
+        data = json.loads(match.group(0)) if match else {"error": "Invalid JSON format from GPT"}
 
         return jsonify({
             "title": blog_title,
