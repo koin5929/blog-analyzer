@@ -1,9 +1,20 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import os
+import re
+import json
+import feedparser
 from openai import OpenAI
-import re, json, feedparser
+from dotenv import load_dotenv
 
-client = OpenAI(api_key="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")
+# .env 파일 불러오기
+load_dotenv()
+
+# 환경변수에서 API 키 읽기
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# OpenAI 클라이언트 초기화
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = Flask(__name__)
 CORS(app)
