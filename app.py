@@ -11,7 +11,7 @@ CORS(app)
 
 # ✅ 최신 openai 라이브러리 (1.0 이상)
 from openai import OpenAI
-client = OpenAI(api_key="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")
+client = OpenAI(api_key="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")
 
 @app.route("/analyze-blog", methods=["POST"])
 def analyze():
