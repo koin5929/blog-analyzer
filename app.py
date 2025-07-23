@@ -5,9 +5,11 @@ import requests
 import re
 import json
 
-# ✅ 최신 OpenAI 라이브러리 방식
-from openai import OpenAI
-client = OpenAI(api_key="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")
+# ✅ 최신 OpenAI 라이브러리 사용 방식
+import openai
+
+# 👇 여기에 API 키 직접 입력 또는 환경변수 사용
+client = openai.OpenAI(api_key="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")
 
 app = Flask(__name__)
 CORS(app)
