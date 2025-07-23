@@ -4,11 +4,13 @@ import openai
 import feedparser
 import requests
 import re
+import json
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})  # 모든 도메인에서 CORS 허용
 
-openai.api_key = "sk-..."  # 본인의 GPT 키
+# ✅ 직접 OpenAI API 키 입력 (주의: 공개 저장소에 올릴 경우 위험!)
+openai.api_key = "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"
 
 @app.route("/analyze-blog", methods=["POST"])
 def analyze():
@@ -27,22 +29,31 @@ def analyze():
 
 콘텐츠 품질, SEO, 가독성, 전문성, 독자 참여도를 점수로 평가해줘. JSON으로만 응답."""
 
-    res = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "블로그 품질 분석가로서 정확하게 분석하고 JSON으로 응답하세요."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=800
-    )
+    try:
+        res = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "블로그 품질 분석가로서 정확하게 분석하고 JSON으로 응답하세요."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=800
+        )
 
-    content = res.choices[0].message.content
-    match = re.search(r"\{.*\}", content, re.DOTALL)
-    data = eval(match.group(0)) if match else {"error": "Invalid JSON"}
+        content = res.choices[0].message.content
+        match = re.search(r"\{.*\}", content, re.DOTALL)
 
-    return jsonify({
-        "title": blog_title,
-        "description": description,
-        "post_count": post_count,
-        **data
-    })
+        data = json.loads(match.group(0)) if match else {"error": "Invalid JSON"}
+
+        return jsonify({
+            "title": blog_title,
+            "description": description,
+            "post_count": post_count,
+            **data
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ✅ Render 배포용 포트 설정
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
