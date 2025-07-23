@@ -4,16 +4,20 @@ import os
 import re
 import json
 import feedparser
-from openai import OpenAI
-from dotenv import load_dotenv
 
-# .env 파일 불러오기
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("⚠️ python-dotenv가 설치되지 않았습니다. 환경변수를 직접 설정하세요.")
 
 # 환경변수에서 API 키 읽기
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("❌ OPENAI_API_KEY 환경변수가 설정되어 있지 않습니다.")
 
 # OpenAI 클라이언트 초기화
+from openai import OpenAI
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = Flask(__name__)
@@ -22,6 +26,9 @@ CORS(app)
 @app.route("/analyze-blog", methods=["POST"])
 def analyze():
     blog_id = request.json.get("blogId")
+    if not blog_id:
+        return jsonify({"error": "블로그 ID가 제공되지 않았습니다."}), 400
+
     rss_url = f"https://rss.blog.naver.com/{blog_id}.xml"
     feed = feedparser.parse(rss_url)
 
@@ -29,12 +36,22 @@ def analyze():
     blog_title = feed.feed.title if 'title' in feed.feed else blog_id
     description = feed.feed.description if 'description' in feed.feed else "네이버 블로그입니다."
 
-    prompt = f"""다음 블로그 정보를 바탕으로 품질을 분석해줘:
+    prompt = f"""
+다음 블로그 정보를 바탕으로 품질을 분석해줘:
 - 제목: {blog_title}
 - 설명: {description}
 - 포스팅 수: {post_count}
 
-콘텐츠 품질, SEO, 가독성, 전문성, 독자 참여도를 점수로 평가해줘. JSON으로만 응답."""
+아래 항목을 포함한 JSON 형식으로 응답해줘. 다른 말은 하지 말고 JSON만 출력:
+{{
+  "quality": (콘텐츠 품질 점수, 0~100),
+  "seo": (SEO 최적화 점수, 0~100),
+  "readability": (가독성 점수, 0~100),
+  "expertise": (전문성 점수, 0~100),
+  "engagement": (독자 참여도 점수, 0~100),
+  "score": (종합 점수, 0~100)
+}}
+"""
 
     try:
         response = client.chat.completions.create(
@@ -46,9 +63,19 @@ def analyze():
             max_tokens=800
         )
 
-        content = response.choices[0].message.content
+        content = response.choices[0].message.content.strip()
+        print("[🔍 GPT 응답 디버깅]:\n", content)
+
         match = re.search(r"\{.*\}", content, re.DOTALL)
-        data = json.loads(match.group(0)) if match else {"error": "Invalid JSON format from GPT"}
+        if not match:
+            return jsonify({"error": "GPT 응답에서 JSON을 추출할 수 없습니다.", "raw": content}), 500
+
+        data = json.loads(match.group(0))
+
+        # 누락된 필드를 기본값 0으로 보완
+        required_keys = ["quality", "seo", "readability", "expertise", "engagement", "score"]
+        for key in required_keys:
+            data.setdefault(key, 0)
 
         return jsonify({
             "title": blog_title,
