@@ -7,7 +7,7 @@ import json
 
 # ✅ 최신 OpenAI 라이브러리 방식
 from openai import OpenAI
-client = OpenAI(api_key="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")
+client = OpenAI(api_key="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")
 
 app = Flask(__name__)
 CORS(app)
